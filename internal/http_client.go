@@ -16,6 +16,7 @@ package internal
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -262,7 +263,17 @@ func (r *Request) buildHTTPRequest(opts []HTTPOption) (*http.Request, error) {
 		if err != nil {
 			return nil, err
 		}
-		data = bytes.NewBuffer(b)
+		var buf bytes.Buffer
+
+		g := gzip.NewWriter(&buf)
+		if _, err = g.Write(b); err != nil {
+			return nil, err
+		}
+		if err = g.Close(); err != nil {
+			return nil, err
+		}
+		data = bytes.NewBuffer(buf.Bytes())
+		opts = append(opts, WithHeader("Content-Encoding", "gzip"))
 		opts = append(opts, WithHeader("Content-Type", r.Body.Mime()))
 	}
 
